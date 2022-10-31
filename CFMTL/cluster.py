@@ -1,19 +1,25 @@
+
 import argparse
 
 import torch
 
-from CFMTL.fedavg import FedAvg
+# from CFMTL.fedavg import FedAvg
+from fedavg import FedAvg
 import numpy as np
 from scipy.cluster.hierarchy import fcluster
 from scipy.cluster.hierarchy import linkage,ward
 import copy
 import math
+from util import cost_time
 
+# @cost_time
 def Cluster(group, w_local, args):
     X = [[] for i in range(len(group))]
+
     for i in range(len(group)):
         for j in w_local[i].keys():
-            X[i] += w_local[i][j].numpy().flatten().tolist()
+            X[i] += w_local[i][j].flatten().tolist()
+            # X[i] += w_local[i][j].cpu().numpy().flatten().tolist()
     X = np.array(X)
     Z = linkage(X, 'ward')
     if args.if_clust == True:
@@ -59,15 +65,3 @@ def Cluster(group, w_local, args):
                     dist = 1 - np.dot(X_groups[i], X_groups[j].T)/(a * b)
                     rel[-1].append(dist)
     return new_groups, new_w_groups, rel
-
-# import argparse
-# parser = argparse.ArgumentParser()
-# parser.add_argument('--if_clust', type=bool, default=True)
-# parser.add_argument('--num_clients', type=int, default=50)
-# parser.add_argument('--clust', type=int, default=10)
-# parser.add_argument('--dist', type=str, default='L2')
-# w_local = torch.load('../w_local.pth')
-# group = [i for i in range(len(w_local))]
-# args = parser.parse_args()
-# new_groups, new_w_groups, rel = Cluster(group, w_local, args)
-# print(new_groups)
