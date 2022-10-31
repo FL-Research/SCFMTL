@@ -11,24 +11,33 @@ from crypten import mpc
 
 # @run_multiprocess(world_size=2)
 def Cluster_Init(args):
+
     mpc.set_activate_protocol("FSS")
     rank = dist.get_rank()
+    if rank == 0:
+        torch.cuda.set_device(0)
+    else:
+        torch.cuda.set_device(1)
     # do on client
     w_local = torch.load('./w_local.pth')
     info(f"num of data {len(w_local)}")
     w_local_enc = encrypt_w(w_local)
 
     info("encrypt....")
-
+    # info(f"sizeof(w_local_enc)={sys.getsizeof(w_local_enc[0]) / 1024}")
     # do on server
     new_groups, one_hot, rel = simulation_clusters(w_local_enc, args)
+
+    one_hot = one_hot.cuda()
     new_w_groups = cluster_avg_w(one_hot, w_local_enc)
     info("cluster over....")
 
     if args.prox:
+        info("Start group study...")
         # torch.save((new_w_groups, args, rel), f"./rank{rank}-prox.pth")
         # exit(1)
         new_w_groups = Prox(new_w_groups, args, rel)
+        info("End group study...")
 
     # do on client
     for i in range(len(new_groups)):
@@ -98,7 +107,8 @@ def fed_avg(W, num_c=None):
     for k in w_avg.keys():
         for c in range(1, len(W)):
             w_avg[k] += W[c][k]
-        w_avg[k] /= num_c
+        # w_avg[k] /= num_c
+        w_avg[k] = w_avg[k].cpu() / num_c
     return w_avg
 
 
@@ -119,11 +129,11 @@ def cluster_avg_w(one_hot, W):
                     size_dict[k] = [num_g] + [1 for _ in range(len(W[c][k].size()))]
 
             c_one_hot = one_hot[c]
-            num_c_per_group += c_one_hot
+            num_c_per_group += c_one_hot.cpu()
             mix_ws = [OrderedDict() for _ in range(num_g)]
             for k in W[c].keys():
                 k_c_one_hot = c_one_hot.reshape(size_dict[k])
-                k_mix_w = k_c_one_hot * W[c][k]
+                k_mix_w = k_c_one_hot.cpu() * W[c][k].cpu()
                 for g in range(num_g):
                     mix_ws[g][k] = k_mix_w[g]
             for g in range(num_g):
