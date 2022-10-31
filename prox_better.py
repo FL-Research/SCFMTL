@@ -1,6 +1,16 @@
+'''
+Author: ssy
+Date: 2022-10-09 05:03:25
+LastEditors: ssy
+LastEditTime: 2022-10-10 04:39:09
+FilePath: /SCFMTL/prox_better.py
+Description: 
+
+Copyright (c) 2022 by ssy, All Rights Reserved. 
+'''
 from model import *
 import crypten
-
+from utils import info
 
 def L2(_old_params, _old_w, param, args, rel):
     w = []
@@ -31,10 +41,16 @@ def Prox(w_groups, args, rel):
 
 def L2_Prox(w_groups, args, rel):
     if args.dataset == 'mnist':
-        Net = Crypten_Net_mnist
+        Net = Crypten_Net_mnist()
+    elif args.dataset == "cifar":
+        Net = Crypten_Net_cifar()
+    elif args.dataset == "caltech101":
+        Net = crypten_net_caltech101()
     else:
-        Net = Crypten_Net_cifar
-
+        print(f"{args.dataset} undefine")
+        exit(1)
+    net = Net.encrypt()
+    net = net.cuda()
     old_params = []
     for w in w_groups:
         tmp = []
@@ -44,10 +60,10 @@ def L2_Prox(w_groups, args, rel):
 
     w_new = []
     for i in range(len(w_groups)):
+ 
         w = w_groups[i]
-        net = Net().encrypt()
+
         net.load_state_dict(w, strict=False)
-        net.cuda()
         opt = crypten.optim.SGD(net.parameters(), lr=args.prox_lr, momentum=args.prox_momentum)
 
         _old_params = crypten.stack(old_params[:i] + old_params[i + 1:])
