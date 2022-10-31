@@ -1,7 +1,8 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-      
+import pretrainedmodels
+
 class Net_mnist(nn.Module):
     def __init__(self):
         super(Net_mnist, self).__init__()
@@ -38,3 +39,32 @@ class Net_cifar(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return F.log_softmax(x, dim=1)
+      
+      
+class ResNet34(nn.Module):
+    """resnet34 模型定义
+    """
+    def __init__(self, pretrained):
+        super(ResNet34, self).__init__()
+        if pretrained is True:
+            self.model = pretrainedmodels.__dict__['resnet34'](pretrained='imagenet')
+        else:
+            self.model = pretrainedmodels.__dict__['resnet34'](pretrained=None)
+        
+        # change the classification layer
+        # len(lb.classes_) = 101
+        self.l0 = nn.Linear(512, 101)
+        self.dropout = nn.Dropout2d(0.4)
+    def forward(self, x):
+        # get the batch size only, ignore (c, h, w)
+        batch, _, _, _ = x.shape
+        x = self.model.features(x)
+        x = F.adaptive_avg_pool2d(x, 1).reshape(batch, -1)
+        x = self.dropout(x)
+        l0 = self.l0(x)
+        return l0
+
+def net_caltech():
+    """获取caltech数据集所对应的模型
+    """
+    return ResNet34(pretrained=True)      
