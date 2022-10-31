@@ -396,3 +396,166 @@ def cifar_non_iid_single_class(train_dataset, test_dataset, num_clients, num_cla
                 train_dict_clients[i] += train_dict
                 test_dict_clients[i] += test_dict            
     return train_dict_clients, test_dict_clients'''
+
+
+
+def divided_data_iid(train_dataset, test_dataset, num_clients, num_class):
+    """ 划分数据集 iid， 将数据分配给客户端
+    """
+    # import pdb
+    # pdb.set_trace()
+
+    train_class_items = int(len(train_dataset)/num_class)
+    test_class_items = int(len(test_dataset)/num_class)
+    train_num_items = int(train_class_items/num_clients)
+    test_num_items = int(test_class_items/num_clients)
+    train_dict_clients = [[] for i in range(num_clients)]
+    test_dict_clients = [[] for i in range(num_clients)]
+
+    assert train_num_items > 0 and  test_num_items > 0, \
+        f"train_num_items={train_num_items}, test_num_items={train_num_items}"
+
+
+    # 数据集的分类数目
+    train_ids_class = [[] for i in range(num_class)]
+
+    for i in range(len(train_dataset)):
+        image, label = train_dataset[i]
+        # for idx in label:
+        #     if idx == 1:
+        train_ids_class[label].append(i)
+        
+    train_ids = []
+    for i in range(len(train_ids_class)):
+        train_ids += train_ids_class[i]
+        
+    test_ids_class = [[] for i in range(num_class)]
+    for i in range(len(test_dataset)):
+        image, label = test_dataset[i]
+        # for idx in label:
+        #     if idx == 1:
+        test_ids_class[label].append(i)
+        
+    test_ids = []
+    for i in range(len(test_ids_class)):
+        test_ids += test_ids_class[i]
+    
+    new_train_ids = []
+    for i in range(num_class):
+        new_train_ids += list(np.random.permutation(train_ids[i*train_class_items : (i+1)*train_class_items]))
+    train_ids = new_train_ids
+    new_test_ids = []
+    for i in range(num_class):
+        new_test_ids += list(np.random.permutation(test_ids[i*test_class_items : (i+1)*test_class_items]))
+    test_ids = new_test_ids
+    
+    for i in range(num_clients):
+        for j in range(num_class):
+            train_dict = train_ids[j*train_class_items+i*train_num_items : j*train_class_items+(i+1)*train_num_items]
+            test_dict = test_ids[j*test_class_items+i*test_num_items : j*test_class_items+(i+1)*test_num_items]
+            train_dict_clients[i] += train_dict
+            test_dict_clients[i] += test_dict
+
+    return train_dict_clients, test_dict_clients
+
+def divided_data_non_iid(train_dataset, test_dataset, num_clients, num_class, ratio):
+    train_ids_class = [[] for i in range(num_class)]
+    for i in range(len(train_dataset)):
+        image, label = train_dataset[i]
+        train_ids_class[label].append(i)
+        
+    train_ids = []
+    for i in range(len(train_ids_class)):
+        train_ids += train_ids_class[i]
+    
+    test_ids_class = [[] for i in range(num_class)]
+    for i in range(len(test_dataset)):
+        image, label = test_dataset[i]
+        test_ids_class[label].append(i)
+        
+    test_ids = []
+    for i in range(len(test_ids_class)):
+        test_ids += test_ids_class[i]
+
+    train_class_items = int(len(train_dataset)/num_class)
+    test_class_items = int(len(test_dataset)/num_class)
+    train_class_items_1 = int(len(train_dataset)/num_class*ratio)
+    test_class_items_1 = int(len(test_dataset)/num_class*ratio)
+    train_class_items_2 = int(len(train_dataset)/num_class*(1-ratio))
+    test_class_items_2 = int(len(test_dataset)/num_class*(1-ratio))
+    train_num_items_1 =  int(len(train_dataset)/num_clients*ratio)
+    test_num_items_1 = int(len(test_dataset)/num_clients*ratio)
+    train_num_items_2 = int(train_class_items_2/num_clients)
+    test_num_items_2 = int(test_class_items_2/num_clients)
+    train_dict_clients = [[] for i in range(num_clients)]
+    test_dict_clients = [[] for i in range(num_clients)]
+    
+    new_train_ids = []
+    for i in range(num_class):
+        new_train_ids += list(np.random.permutation(train_ids[i*train_class_items : (i+1)*train_class_items]))
+    train_ids = new_train_ids
+    new_test_ids = []
+    for i in range(num_class):
+        new_test_ids += list(np.random.permutation(test_ids[i*test_class_items : (i+1)*test_class_items]))
+    test_ids = new_test_ids 
+    
+    train_ids_1 = []
+    test_ids_1 = []
+    train_ids_2 = []
+    test_ids_2 = []
+    for i in range(num_class):
+        train_ids_1 += train_ids[i*train_class_items : i*train_class_items+train_class_items_1]
+        test_ids_1 += test_ids[i*test_class_items : i*test_class_items+test_class_items_1]
+        train_ids_2 += train_ids[i*train_class_items+train_class_items_1 : (i+1)*train_class_items]
+        test_ids_2 += test_ids[i*test_class_items+test_class_items_1 : (i+1)*train_class_items]
+    
+    for i in range(num_clients):
+        train_dict_clients[i] += train_ids_1[i*train_num_items_1 : (i+1)*train_num_items_1]
+        test_dict_clients[i] += test_ids_1[i*test_num_items_1 : (i+1)*test_num_items_1]
+        for j in range(num_class):
+            train_dict_clients[i] += train_ids_2[j*train_class_items_2+i*train_num_items_2 : j*train_class_items_2+(i+1)*train_num_items_2]
+            test_dict_clients[i] += test_ids_2[j*test_class_items_2+i*test_num_items_2 : j*test_class_items_2+(i+1)*test_num_items_2]            
+    return train_dict_clients, test_dict_clients
+
+def divided_data_non_iid_single_class(train_dataset, test_dataset, num_clients, num_class):
+    train_ids_class = [[] for i in range(num_class)]
+    for i in range(len(train_dataset)):
+        image, label = train_dataset[i]
+        train_ids_class[label].append(i)
+        
+    train_ids = []
+    for i in range(len(train_ids_class)):
+        train_ids += train_ids_class[i]
+        
+    test_ids_class = [[] for i in range(num_class)]
+ 
+    for i in range(len(test_dataset)):
+        image, label = test_dataset[i]
+        test_ids_class[label].append(i)
+        
+    test_ids = []
+    for i in range(len(test_ids_class)):
+        test_ids += test_ids_class[i]
+
+    train_class_items = int(len(train_dataset)/num_class)
+    test_class_items = int(len(test_dataset)/num_class)
+    train_num_items = int(len(train_dataset)/num_clients)
+    test_num_items = int(len(test_dataset)/num_clients)
+    train_dict_clients = [[] for i in range(num_clients)]
+    test_dict_clients = [[] for i in range(num_clients)]
+    
+    new_train_ids = []
+    for i in range(num_class):
+        new_train_ids += list(np.random.permutation(train_ids[i*train_class_items : (i+1)*train_class_items]))
+    train_ids = new_train_ids
+    new_test_ids = []
+    for i in range(num_class):
+        new_test_ids += list(np.random.permutation(test_ids[i*test_class_items : (i+1)*test_class_items]))
+    test_ids = new_test_ids
+    
+    for i in range(num_clients):
+        train_dict = train_ids[i*train_num_items : (i+1)*train_num_items]
+        test_dict = test_ids[i*test_num_items : (i+1)*test_num_items]
+        train_dict_clients[i] += train_dict
+        test_dict_clients[i] += test_dict
+    return train_dict_clients, test_dict_clients
