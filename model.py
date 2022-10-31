@@ -122,9 +122,4 @@ def crypten_net_caltech101():
     return crypten_net
 
 
-def test_crypten_model_load():
-    net = crypten_net_caltech101()
-    net = net.encrypt()
-    net = net.cuda()
-
 
