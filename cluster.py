@@ -13,18 +13,20 @@ def _getname(i, j):
 
 
 def _euclidean_dist(X, num_c):
+    X = X.cpu()
     clusterDistance = dict()
     distList = []
     s = time.time()
     info(f"begin to compute distance, client num {num_c}")
     for i in range(0, num_c - 1):
-        distances = (X - X[i]).square().sum(dim=1).sqrt().cpu()
+        # distances = (X - X[i]).square().sum(dim=1).sqrt().cpu()
+        distances = (X - X[i]).square().sum(dim=1).sqrt()
         for j in range(i + 1, num_c):
             name = _getname(i, j)
             clusterDistance[name] = distances[j]
             distList.append({'i': i, 'j': j, 'dist': distances[j]})
 
-    info(f"compute distance time use : {time.time() - s}")
+    info(f"compute distance time use : {time.time() - s} s")
     return clusterDistance, distList
 
 
@@ -87,11 +89,12 @@ class Heap:
 
 
 def _clusters_by_heap(group, w_local, args):
+
     X = flatten(w_local)
     X = X.cuda()
 
     clusterDistance, distList = _euclidean_dist(X, args.num_clients)
-
+    # info(f"distList = {distList}")
     s = time.time()
     info("build min heap")
     heap = Heap(distList)
@@ -293,9 +296,15 @@ def _build_rel(X, args, finalcluster):
 
 def simulation_clusters(w_local_enc, args):
     # simulation_shuffle
+    # if dist.get_rank() == 0:
+    #     torch.cuda.set_device(0)
+    # else:
+    #     torch.cuda.set_device(1)
+
     group = [i for i in range(args.num_clients)]
 
     group = np.random.choice(group, args.num_clients, replace=False)
+
     group_enc = crypten.cryptensor(group)
 
     group = group_enc.get_plain_text()
