@@ -1,6 +1,6 @@
-CFMTL：明文多任务联邦学习
+CFMTL：clustered federated multi-task learning
 
-crypten：MPC计算框架源码
+crypten：MPC computation open-source framework
 
 # secure MNIST experiments
 python main.py --dataset mnist --iid iid --ep 50 --local_ep 1 --frac 0.2 --num_batch 10 --num_clients 200 --clust 20 --L 1.0 --experiment performance-mnist
